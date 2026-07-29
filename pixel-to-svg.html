@@ -1,0 +1,644 @@
+<div id="app-root"></div>
+<style>
+  :root {
+    --win-gray: #c0c0c0;
+    --win-gray-dark: #808080;
+    --win-gray-darker: #404040;
+    --win-blue: #000080;
+    --win-teal: #008080;
+    --mono: "Courier New", monospace;
+  }
+  #app-root {
+    font-family: var(--mono);
+    background: var(--win-teal);
+    min-height: 100vh;
+    padding: 24px 16px;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+  }
+  .window {
+    width: 100%;
+    max-width: 720px;
+    background: var(--win-gray);
+    border: 2px solid #fff;
+    border-right-color: var(--win-gray-darker);
+    border-bottom-color: var(--win-gray-darker);
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.4);
+  }
+  .titlebar {
+    background: linear-gradient(90deg, var(--win-blue), #1084d0);
+    color: #fff;
+    font-weight: bold;
+    font-size: 13px;
+    padding: 4px 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    letter-spacing: 0.5px;
+  }
+  .titlebar .dots { display:flex; gap:2px; }
+  .titlebar .win-btn {
+    width: 16px; height: 14px;
+    background: var(--win-gray);
+    border-top: 1px solid #fff;
+    border-left: 1px solid #fff;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
+    box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 #808080;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: default;
+  }
+  .titlebar .win-btn svg { width: 8px; height: 8px; display: block; }
+  .titlebar .win-btn:active {
+    border-top-color: #000; border-left-color: #000;
+    border-right-color: #fff; border-bottom-color: #fff;
+    box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #dfdfdf;
+  }
+  .content { padding: 14px; color: #000; font-size: 13px; }
+  fieldset { border: 1px solid var(--win-gray-darker); border-top-color:#fff; border-left-color:#fff; margin: 0 0 12px 0; padding: 10px; }
+  legend { padding: 0 4px; font-weight: bold; }
+  .row { display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap: wrap; }
+  label { min-width: 110px; }
+  input[type=file] { font-family: var(--mono); font-size: 12px; }
+  input[type=range] { flex:1; min-width: 120px; }
+  input[type=number] { width: 60px; font-family: var(--mono); }
+  select { font-family: var(--mono); font-size: 12px; padding: 2px; }
+  button {
+    font-family: var(--mono);
+    background: var(--win-gray);
+    border: 2px solid #fff;
+    border-right-color: var(--win-gray-darker);
+    border-bottom-color: var(--win-gray-darker);
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button:active {
+    border-color: var(--win-gray-darker);
+    border-right-color: #fff;
+    border-bottom-color: #fff;
+  }
+  button:disabled { color: #888; cursor: default; }
+  .previews { display:flex; gap: 16px; align-items:flex-start; flex-wrap: wrap; }
+  .preview-box {
+    background: repeating-conic-gradient(#eee 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+    border: 2px inset var(--win-gray-darker);
+    padding: 8px;
+    display:flex; align-items:center; justify-content:center;
+    width: 160px; height: 160px;
+  }
+  .preview-box img, .preview-box svg, .preview-box canvas { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+  .col { display:flex; flex-direction:column; gap:6px; align-items:center; }
+  .col .caption { font-size: 11px; color: #333; }
+  textarea {
+    width: 100%; height: 130px; font-family: var(--mono); font-size: 11px;
+    box-sizing: border-box; border: 2px inset var(--win-gray-darker); padding: 6px;
+    resize: vertical;
+  }
+  .status { font-size: 12px; margin-top: 6px; min-height: 16px; }
+  .status.err { color: #a00; font-weight: bold; }
+  .status.ok { color: #060; }
+  .actions { display:flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .stat-line { font-size: 11px; color:#333; margin-top:4px; }
+  .hidden { display: none !important; }
+</style>
+<script>
+(function(){
+  const root = document.getElementById('app-root');
+  root.innerHTML = `
+    <div class="window">
+      <div class="titlebar">
+        <span>pixel2svg.exe</span>
+        <div class="dots">
+          <div class="win-btn" title="Minimize" aria-label="Minimize">
+            <svg viewBox="0 0 8 8"><rect x="1" y="6" width="6" height="1.4" fill="#000"/></svg>
+          </div>
+          <div class="win-btn" title="Maximize" aria-label="Maximize">
+            <svg viewBox="0 0 8 8"><rect x="1" y="1" width="6" height="6" fill="none" stroke="#000" stroke-width="1"/></svg>
+          </div>
+          <div class="win-btn" title="Close" aria-label="Close">
+            <svg viewBox="0 0 8 8"><path d="M1,1 L7,7 M7,1 L1,7" stroke="#000" stroke-width="1.3"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="content">
+        <fieldset>
+          <legend>1. Choose image</legend>
+          <div class="row">
+            <label for="fileInput">PNG or ICO:</label>
+            <input type="file" id="fileInput" accept=".png,.ico,image/png,image/x-icon,image/vnd.microsoft.icon" />
+          </div>
+          <div class="row hidden" id="frameRow">
+            <label for="frameSelect">ICO frame:</label>
+            <select id="frameSelect"></select>
+          </div>
+          <div class="status" id="fileStatus"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>2. Resize source</legend>
+          <div class="row">
+            <label for="resizeSelect">Target size:</label>
+            <select id="resizeSelect">
+              <option value="original">Keep original</option>
+              <option value="16">16 x 16</option>
+              <option value="32">32 x 32</option>
+              <option value="48">48 x 48</option>
+              <option value="64" selected>64 x 64</option>
+              <option value="128">128 x 128</option>
+              <option value="custom">Custom...</option>
+            </select>
+          </div>
+          <div class="row hidden" id="customSizeRow">
+            <label>Width x Height:</label>
+            <input type="number" id="customW" min="1" max="1024" value="64" />
+            <span>x</span>
+            <input type="number" id="customH" min="1" max="1024" value="64" />
+          </div>
+          <div style="font-size:11px;color:#333;">Downsampling uses nearest-neighbor, so edges stay crisp instead of blurring.</div>
+        </fieldset>
+
+        <fieldset>
+          <legend>3. Output settings</legend>
+          <div class="row">
+            <label for="scaleRange">Pixel size:</label>
+            <input type="range" id="scaleRange" min="2" max="30" value="10" />
+            <input type="number" id="scaleNum" min="1" max="100" value="10" />
+            <span>px per source pixel</span>
+          </div>
+          <div class="row">
+            <label for="mergeCheck">2D merge:</label>
+            <input type="checkbox" id="mergeCheck" checked />
+            <span style="font-size:11px;color:#333;">combine same-color blocks (rows + columns) into single rects for a much smaller file</span>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>4. Preview</legend>
+          <div class="previews">
+            <div class="col">
+              <div class="preview-box" id="srcBox"><span style="font-size:11px;color:#666;">no image yet</span></div>
+              <div class="caption">resized source</div>
+            </div>
+            <div class="col">
+              <div class="preview-box" id="svgBox"><span style="font-size:11px;color:#666;">output preview</span></div>
+              <div class="caption">SVG output</div>
+            </div>
+          </div>
+          <div class="stat-line" id="statLine"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>5. SVG source</legend>
+          <textarea id="svgOut" readonly placeholder="SVG markup will appear here..."></textarea>
+          <div class="actions">
+            <button id="copyBtn" disabled>Copy SVG</button>
+            <button id="downloadBtn" disabled>Download .svg</button>
+            <button id="downloadPngBtn" disabled>Download .png</button>
+            <button id="downloadWebpBtn" disabled>Download .webp</button>
+          </div>
+          <div class="stat-line" id="formatCompare"></div>
+        </fieldset>
+      </div>
+    </div>
+  `;
+
+  const fileInput = root.querySelector('#fileInput');
+  const fileStatus = root.querySelector('#fileStatus');
+  const frameRow = root.querySelector('#frameRow');
+  const frameSelect = root.querySelector('#frameSelect');
+  const resizeSelect = root.querySelector('#resizeSelect');
+  const customSizeRow = root.querySelector('#customSizeRow');
+  const customW = root.querySelector('#customW');
+  const customH = root.querySelector('#customH');
+  const scaleRange = root.querySelector('#scaleRange');
+  const scaleNum = root.querySelector('#scaleNum');
+  const mergeCheck = root.querySelector('#mergeCheck');
+  const srcBox = root.querySelector('#srcBox');
+  const svgBox = root.querySelector('#svgBox');
+  const svgOut = root.querySelector('#svgOut');
+  const statLine = root.querySelector('#statLine');
+  const copyBtn = root.querySelector('#copyBtn');
+  const downloadBtn = root.querySelector('#downloadBtn');
+  const downloadPngBtn = root.querySelector('#downloadPngBtn');
+  const downloadWebpBtn = root.querySelector('#downloadWebpBtn');
+  const formatCompare = root.querySelector('#formatCompare');
+
+  let currentBuffer = null;      // raw ArrayBuffer of the loaded .ico (if applicable)
+  let icoEntries = [];           // list of {w,h,bitCount,bytesInRes,imageOffset}
+  let sourcePixels = null;       // { width, height, data } - the chosen/decoded frame, at native size
+  let currentSvgString = '';
+  let currentFileBase = 'icon';
+  let currentOutputCanvas = null; // native-resolution canvas of the resized pixels, for PNG/WebP export
+
+  function setStatus(msg, kind){
+    fileStatus.textContent = msg || '';
+    fileStatus.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function syncScaleInputs(source){
+    if (source === 'range') scaleNum.value = scaleRange.value;
+    else scaleRange.value = scaleNum.value;
+  }
+  scaleRange.addEventListener('input', () => { syncScaleInputs('range'); regenerate(); });
+  scaleNum.addEventListener('input', () => { syncScaleInputs('num'); regenerate(); });
+  mergeCheck.addEventListener('change', regenerate);
+  customW.addEventListener('input', regenerate);
+  customH.addEventListener('input', regenerate);
+  resizeSelect.addEventListener('change', () => {
+    customSizeRow.classList.toggle('hidden', resizeSelect.value !== 'custom');
+    regenerate();
+  });
+
+  // Decode a PNG/other browser-native image blob into raw RGBA pixels.
+  function decodeViaImageElement(blob){
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        if (!w || !h) { reject(new Error('Empty image')); return; }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, 0, 0);
+        let data;
+        try { data = ctx.getImageData(0, 0, w, h).data; }
+        catch (err) { reject(err); return; }
+        URL.revokeObjectURL(url);
+        resolve({ width: w, height: h, data });
+      };
+      img.onerror = () => reject(new Error('Browser could not decode this image data.'));
+      img.src = url;
+    });
+  }
+
+  // List every frame directory entry in a .ico without decoding pixel data.
+  function listIcoEntries(buffer){
+    const view = new DataView(buffer);
+    const type = view.getUint16(2, true);
+    if (type !== 1) throw new Error('Not a recognized .ico file (unexpected header).');
+    const count = view.getUint16(4, true);
+    if (count < 1) throw new Error('.ico file contains no images.');
+    const entries = [];
+    for (let i = 0; i < count; i++) {
+      const off = 6 + 16 * i;
+      let w = view.getUint8(off); if (w === 0) w = 256;
+      let h = view.getUint8(off + 1); if (h === 0) h = 256;
+      const bitCount = view.getUint16(off + 6, true);
+      const bytesInRes = view.getUint32(off + 8, true);
+      const imageOffset = view.getUint32(off + 12, true);
+      entries.push({ w, h, bitCount, bytesInRes, imageOffset });
+    }
+    return entries;
+  }
+
+  // Decode one specific ico frame entry (PNG-encoded or legacy DIB) to RGBA.
+  async function decodeIcoEntry(buffer, entry){
+    const view = new DataView(buffer);
+    const sig = new Uint8Array(buffer, entry.imageOffset, 8);
+    const isPng = sig[0] === 0x89 && sig[1] === 0x50 && sig[2] === 0x4E && sig[3] === 0x47;
+    if (isPng) {
+      const bytes = new Uint8Array(buffer, entry.imageOffset, entry.bytesInRes);
+      const blob = new Blob([bytes], { type: 'image/png' });
+      const decoded = await decodeViaImageElement(blob);
+      return { width: decoded.width, height: decoded.height, data: decoded.data, note: 'PNG-encoded frame' };
+    }
+
+    // Legacy DIB (BITMAPINFOHEADER) frame.
+    const dibOff = entry.imageOffset;
+    const headerSize = view.getUint32(dibOff, true);
+    const width = view.getInt32(dibOff + 4, true);
+    const rawHeight = view.getInt32(dibOff + 8, true);
+    const height = Math.floor(rawHeight / 2); // XOR mask + AND mask stacked
+    const bitCount = view.getUint16(dibOff + 14, true);
+    const compression = view.getUint32(dibOff + 16, true);
+    if (compression !== 0) throw new Error('This .ico uses compressed icon frames, which is not supported.');
+    const colorsUsed = view.getUint32(dibOff + 32, true);
+
+    let palette = null;
+    let dataOff = dibOff + headerSize;
+    if (bitCount <= 8) {
+      const paletteCount = colorsUsed || Math.pow(2, bitCount);
+      palette = [];
+      for (let i = 0; i < paletteCount; i++) {
+        const pOff = dibOff + headerSize + i * 4;
+        palette.push([view.getUint8(pOff + 2), view.getUint8(pOff + 1), view.getUint8(pOff)]); // R,G,B
+      }
+      dataOff = dibOff + headerSize + paletteCount * 4;
+    }
+
+    const xorRowSize = Math.floor((bitCount * width + 31) / 32) * 4;
+    const andRowSize = Math.floor((width + 31) / 32) * 4;
+    const andDataOff = dataOff + xorRowSize * height;
+    const rgba = new Uint8ClampedArray(width * height * 4);
+
+    for (let row = 0; row < height; row++) {
+      const srcRow = height - 1 - row; // stored bottom-up
+      const rowStart = dataOff + srcRow * xorRowSize;
+      const andRowStart = andDataOff + srcRow * andRowSize;
+      for (let x = 0; x < width; x++) {
+        let r, g, b, a;
+        if (bitCount === 32) {
+          const idx = rowStart + x * 4;
+          b = view.getUint8(idx); g = view.getUint8(idx + 1); r = view.getUint8(idx + 2); a = view.getUint8(idx + 3);
+        } else if (bitCount === 24) {
+          const idx = rowStart + x * 3;
+          b = view.getUint8(idx); g = view.getUint8(idx + 1); r = view.getUint8(idx + 2); a = 255;
+        } else if (bitCount === 8) {
+          const pi = view.getUint8(rowStart + x);
+          [r, g, b] = palette[pi] || [0, 0, 0]; a = 255;
+        } else if (bitCount === 4) {
+          const byte = view.getUint8(rowStart + Math.floor(x / 2));
+          const pi = (x % 2 === 0) ? (byte >> 4) & 0xF : byte & 0xF;
+          [r, g, b] = palette[pi] || [0, 0, 0]; a = 255;
+        } else if (bitCount === 1) {
+          const byte = view.getUint8(rowStart + Math.floor(x / 8));
+          const bit = (byte >> (7 - (x % 8))) & 1;
+          [r, g, b] = palette[bit] || [0, 0, 0]; a = 255;
+        } else {
+          r = g = b = 0; a = 255;
+        }
+        if (bitCount !== 32) {
+          const andByte = view.getUint8(andRowStart + Math.floor(x / 8));
+          const andBit = (andByte >> (7 - (x % 8))) & 1;
+          if (andBit === 1) a = 0; // AND mask: 1 = transparent
+        }
+        const outIdx = (row * width + x) * 4;
+        rgba[outIdx] = r; rgba[outIdx + 1] = g; rgba[outIdx + 2] = b; rgba[outIdx + 3] = a;
+      }
+    }
+    return { width, height, data: rgba, note: bitCount + '-bit legacy bitmap, decoded in-browser' };
+  }
+
+  function showPreview(width, height, data){
+    const c = document.createElement('canvas');
+    c.width = width; c.height = height;
+    const ctx = c.getContext('2d');
+    ctx.putImageData(new ImageData(data, width, height), 0, 0);
+    c.style.imageRendering = 'pixelated';
+    c.style.maxWidth = '100%';
+    c.style.maxHeight = '100%';
+    srcBox.innerHTML = '';
+    srcBox.appendChild(c);
+  }
+
+  // Nearest-neighbor resample so pixel-art edges stay crisp instead of blurring.
+  function resizeNearestNeighbor(src, srcW, srcH, dstW, dstH){
+    if (srcW === dstW && srcH === dstH) return src;
+    const dst = new Uint8ClampedArray(dstW * dstH * 4);
+    for (let y = 0; y < dstH; y++) {
+      const sy = Math.min(srcH - 1, Math.floor((y + 0.5) * srcH / dstH));
+      for (let x = 0; x < dstW; x++) {
+        const sx = Math.min(srcW - 1, Math.floor((x + 0.5) * srcW / dstW));
+        const sIdx = (sy * srcW + sx) * 4;
+        const dIdx = (y * dstW + x) * 4;
+        dst[dIdx] = src[sIdx]; dst[dIdx+1] = src[sIdx+1]; dst[dIdx+2] = src[sIdx+2]; dst[dIdx+3] = src[sIdx+3];
+      }
+    }
+    return dst;
+  }
+
+  function getTargetSize(srcW, srcH){
+    const val = resizeSelect.value;
+    if (val === 'original') return { w: srcW, h: srcH };
+    if (val === 'custom') {
+      return { w: Math.max(1, parseInt(customW.value, 10) || srcW), h: Math.max(1, parseInt(customH.value, 10) || srcH) };
+    }
+    const n = parseInt(val, 10);
+    return { w: n, h: n };
+  }
+
+  async function loadFrame(entryIndex){
+    try {
+      let width, height, data, note = '';
+      if (icoEntries.length && currentBuffer) {
+        const entry = icoEntries[entryIndex];
+        const decoded = await decodeIcoEntry(currentBuffer, entry);
+        width = decoded.width; height = decoded.height; data = decoded.data; note = ' (' + decoded.note + ')';
+      } else {
+        width = sourcePixels.width; height = sourcePixels.height; data = sourcePixels.data;
+      }
+      sourcePixels = { width, height, data };
+      setStatus('Loaded: ' + width + ' x ' + height + ' px' + note, 'ok');
+      regenerate();
+    } catch (err) {
+      setStatus('Could not decode this frame: ' + err.message, 'err');
+    }
+  }
+
+  frameSelect.addEventListener('change', () => {
+    loadFrame(parseInt(frameSelect.value, 10));
+  });
+
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    currentFileBase = file.name.replace(/\.[^.]+$/, '') || 'icon';
+    setStatus('Loading ' + file.name + ' ...');
+    frameRow.classList.add('hidden');
+    frameSelect.innerHTML = '';
+    icoEntries = [];
+    currentBuffer = null;
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer.slice(0, 8));
+      const isPngFile = bytes[0]===0x89 && bytes[1]===0x50 && bytes[2]===0x4E && bytes[3]===0x47;
+      const isIcoFile = bytes[0]===0 && bytes[1]===0 && bytes[2]===1 && bytes[3]===0;
+
+      if (isIcoFile) {
+        currentBuffer = buffer;
+        icoEntries = listIcoEntries(buffer);
+        // sort largest first for a sensible dropdown order
+        const order = icoEntries.map((e, i) => i).sort((a, b) => (icoEntries[b].w*icoEntries[b].h) - (icoEntries[a].w*icoEntries[a].h));
+        frameSelect.innerHTML = order.map(i => {
+          const e = icoEntries[i];
+          return `<option value="${i}">${e.w} x ${e.h} (${e.bitCount}-bit)</option>`;
+        }).join('');
+        if (icoEntries.length > 1) frameRow.classList.remove('hidden');
+        await loadFrame(order[0]);
+      } else if (isPngFile) {
+        const decoded = await decodeViaImageElement(file);
+        sourcePixels = decoded;
+        setStatus('Loaded: ' + decoded.width + ' x ' + decoded.height + ' px', 'ok');
+        regenerate();
+      } else {
+        const decoded = await decodeViaImageElement(file);
+        sourcePixels = decoded;
+        setStatus('Loaded: ' + decoded.width + ' x ' + decoded.height + ' px', 'ok');
+        regenerate();
+      }
+    } catch (err) {
+      setStatus('Could not read this file: ' + err.message, 'err');
+    }
+  });
+
+  // Full 2D rectangle merge: greedily grow each uncovered pixel into the
+  // largest same-color rectangle (extend right, then extend down while the
+  // whole row matches). Produces far fewer rects than row-only merging.
+  function buildRects2D(data, w, h, scale){
+    const covered = new Uint8Array(w * h);
+    const rects = [];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = y * w + x;
+        if (covered[idx]) continue;
+        const pIdx = idx * 4;
+        const a = data[pIdx + 3];
+        if (a === 0) { covered[idx] = 1; continue; }
+        const r = data[pIdx], g = data[pIdx+1], b = data[pIdx+2];
+
+        // extend right
+        let runW = 1;
+        while (x + runW < w) {
+          const nIdx = idx + runW;
+          if (covered[nIdx]) break;
+          const nP = nIdx * 4;
+          if (data[nP]===r && data[nP+1]===g && data[nP+2]===b && data[nP+3]===a) runW++;
+          else break;
+        }
+        // extend down while the full row [x, x+runW) matches
+        let runH = 1;
+        outer:
+        while (y + runH < h) {
+          for (let xx = 0; xx < runW; xx++) {
+            const cIdx = (y + runH) * w + (x + xx);
+            if (covered[cIdx]) break outer;
+            const cP = cIdx * 4;
+            if (!(data[cP]===r && data[cP+1]===g && data[cP+2]===b && data[cP+3]===a)) break outer;
+          }
+          runH++;
+        }
+        for (let yy = 0; yy < runH; yy++) {
+          for (let xx = 0; xx < runW; xx++) {
+            covered[(y + yy) * w + (x + xx)] = 1;
+          }
+        }
+        const fillAttr = a === 255 ? `rgb(${r},${g},${b})` : `rgba(${r},${g},${b},${(a/255).toFixed(3)})`;
+        rects.push(`<rect x="${x*scale}" y="${y*scale}" width="${runW*scale}" height="${runH*scale}" fill="${fillAttr}"/>`);
+      }
+    }
+    return rects;
+  }
+
+  function buildRectsRowOnly(data, w, h, scale){
+    const rects = [];
+    for (let y = 0; y < h; y++) {
+      let x = 0;
+      while (x < w) {
+        const idx = (y * w + x) * 4;
+        const r = data[idx], g = data[idx+1], b = data[idx+2], a = data[idx+3];
+        if (a === 0) { x++; continue; }
+        let runLen = 1;
+        while (x + runLen < w) {
+          const nIdx = (y * w + x + runLen) * 4;
+          if (data[nIdx]===r && data[nIdx+1]===g && data[nIdx+2]===b && data[nIdx+3]===a) runLen++;
+          else break;
+        }
+        const fillAttr = a === 255 ? `rgb(${r},${g},${b})` : `rgba(${r},${g},${b},${(a/255).toFixed(3)})`;
+        rects.push(`<rect x="${x*scale}" y="${y*scale}" width="${runLen*scale}" height="${scale}" fill="${fillAttr}"/>`);
+        x += runLen;
+      }
+    }
+    return rects;
+  }
+
+  function regenerate(){
+    if (!sourcePixels) return;
+    const target = getTargetSize(sourcePixels.width, sourcePixels.height);
+    const w = target.w, h = target.h;
+    const data = resizeNearestNeighbor(sourcePixels.data, sourcePixels.width, sourcePixels.height, w, h);
+
+    showPreview(w, h, data);
+
+    const scale = Math.max(1, parseInt(scaleNum.value, 10) || 10);
+    const merge = mergeCheck.checked;
+    const rects = merge ? buildRects2D(data, w, h, scale) : buildRectsRowOnly(data, w, h, scale);
+
+    const svgWidth = w * scale;
+    const svgHeight = h * scale;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgWidth} ${svgHeight}" width="${svgWidth}" height="${svgHeight}" shape-rendering="crispEdges">\n  ${rects.join('\n  ')}\n</svg>`;
+
+    currentSvgString = svg;
+    svgOut.value = svg;
+    svgBox.innerHTML = svg;
+    const svgEl = svgBox.querySelector('svg');
+    if (svgEl) { svgEl.style.width = '100%'; svgEl.style.height = '100%'; }
+
+    statLine.textContent = `${w}x${h} pixels -> ${rects.length} rect(s), ~${(svg.length/1024).toFixed(1)} KB SVG`;
+    copyBtn.disabled = false;
+    downloadBtn.disabled = false;
+
+    // Build a native-resolution canvas (no scale-up) for PNG/WebP export and
+    // compare their sizes against the SVG so the numbers are on the same image.
+    const outCanvas = document.createElement('canvas');
+    outCanvas.width = w; outCanvas.height = h;
+    outCanvas.getContext('2d').putImageData(new ImageData(data, w, h), 0, 0);
+    currentOutputCanvas = outCanvas;
+    downloadPngBtn.disabled = false;
+    downloadWebpBtn.disabled = false;
+
+    const svgKB = svg.length / 1024;
+    outCanvas.toBlob((pngBlob) => {
+      const pngKB = pngBlob ? pngBlob.size / 1024 : null;
+      outCanvas.toBlob((webpBlob) => {
+        const webpKB = webpBlob ? webpBlob.size / 1024 : null;
+        const parts = [`SVG: ${svgKB.toFixed(1)} KB`];
+        parts.push(pngKB != null ? `PNG: ${pngKB.toFixed(1)} KB` : 'PNG: n/a');
+        parts.push(webpKB != null ? `WebP: ${webpKB.toFixed(1)} KB` : 'WebP: not supported in this browser');
+        formatCompare.textContent = parts.join('  |  ');
+      }, 'image/webp', 1.0);
+    }, 'image/png');
+  }
+
+  function downloadCanvas(canvas, type, ext){
+    canvas.toBlob((blob) => {
+      if (!blob) { setStatus('This browser could not export ' + ext.toUpperCase() + '.', 'err'); return; }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = currentFileBase + '.' + ext;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, type, type === 'image/webp' ? 1.0 : undefined);
+  }
+
+  downloadPngBtn.addEventListener('click', () => {
+    if (currentOutputCanvas) downloadCanvas(currentOutputCanvas, 'image/png', 'png');
+  });
+  downloadWebpBtn.addEventListener('click', () => {
+    if (currentOutputCanvas) downloadCanvas(currentOutputCanvas, 'image/webp', 'webp');
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(currentSvgString);
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => { copyBtn.textContent = 'Copy SVG'; }, 1200);
+    } catch (err) {
+      svgOut.select();
+      document.execCommand('copy');
+    }
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    const blob = new Blob([currentSvgString], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = currentFileBase + '.svg';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+})();
+</script>
